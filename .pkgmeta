@@ -1,0 +1,5 @@
+package-as: FishfulThinking
+
+ignore:
+  - media
+  - .github
