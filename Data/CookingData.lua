@@ -1,0 +1,166 @@
+-- Cooking recipes of the WoW: Forever client (build 1.60.1.70450), taken from Forever Chef
+-- by swiftyPigeon (https://github.com/swiftyPigeon/ForeverChef_AddOn), which generated them
+-- from the game's own data tables. Kept here: name (English, only a fallback: the game's
+-- item names are used), reagents (itemID, count, ...), the item it creates, the recipe
+-- items that teach it, whether it comes with the profession (auto), and whether its main
+-- ingredient (the first reagent) comes from fishing (fish).
+--
+-- Forever Chef's license:
+-- MIT License
+--
+-- Copyright (c) 2026 swiftyPigeon
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in all
+-- copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+-- SOFTWARE.
+
+local _, ns = ...
+
+ns.COOKING_RECIPES = {
+    [2538] = { name = "Charred Wolf Meat", reagents = { 2672, 1 }, creates = 2679, auto = true },
+    [2539] = { name = "Spiced Wolf Meat", reagents = { 2672, 1, 2678, 1 }, creates = 2680 },
+    [2540] = { name = "Roasted Boar Meat", reagents = { 769, 1 }, creates = 2681, auto = true },
+    [2541] = { name = "Coyote Steak", reagents = { 2673, 1 }, creates = 2684 },
+    [2542] = { name = "Goretusk Liver Pie", reagents = { 723, 1, 2678, 1 }, creates = 724, items = { 2697 } },
+    [2543] = { name = "Westfall Stew", reagents = { 729, 1, 730, 1, 731, 1 }, creates = 733, items = { 728 } },
+    [2544] = { name = "Crab Cake", reagents = { 2674, 1, 2678, 1 }, creates = 2683 },
+    [2545] = { name = "Cooked Crab Claw", reagents = { 2675, 1, 2678, 1 }, creates = 2682, items = { 2698 } },
+    [2546] = { name = "Dry Pork Ribs", reagents = { 2677, 1, 2678, 1 }, creates = 2687 },
+    [2547] = { name = "Redridge Goulash", reagents = { 1081, 1, 1080, 1 }, creates = 1082, items = { 2699 } },
+    [2548] = { name = "Succulent Pork Ribs", reagents = { 2677, 2, 2692, 1 }, creates = 2685, items = { 2700 } },
+    [2549] = { name = "Seasoned Wolf Kabob", reagents = { 1015, 2, 2678, 1 }, creates = 1017, items = { 2701 } },
+    [2795] = { name = "Beer Basted Boar Ribs", reagents = { 2886, 1, 2894, 1 }, creates = 2888, items = { 2889 } },
+    [3370] = { name = "Crocolisk Steak", reagents = { 2924, 1, 2678, 1 }, creates = 3662, items = { 3678 } },
+    [3371] = { name = "Blood Sausage", reagents = { 3173, 1, 3172, 1, 3174, 1 }, creates = 3220, items = { 3679 } },
+    [3372] = { name = "Murloc Fin Soup", reagents = { 1468, 2, 2692, 1 }, creates = 3663, items = { 3680 } },
+    [3373] = { name = "Crocolisk Gumbo", reagents = { 3667, 1, 2692, 1 }, creates = 3664, items = { 3681 } },
+    [3376] = { name = "Curiously Tasty Omelet", reagents = { 3685, 1, 2692, 1 }, creates = 3665, items = { 3682 } },
+    [3377] = { name = "Gooey Spider Cake", reagents = { 2251, 2, 2692, 1 }, creates = 3666, items = { 3683 } },
+    [3397] = { name = "Big Bear Steak", reagents = { 3730, 1, 2692, 1 }, creates = 3726, items = { 3734 } },
+    [3398] = { name = "Hot Lion Chops", reagents = { 3731, 1, 2692, 1 }, creates = 3727, items = { 3735 } },
+    [3399] = { name = "Tasty Lion Steak", reagents = { 3731, 2, 3713, 1 }, creates = 3728, items = { 3736 } },
+    [3400] = { name = "Soothing Turtle Bisque", reagents = { 3712, 1, 3713, 1 }, creates = 3729, items = { 3737 } },
+    [4094] = { name = "Barbecued Buzzard Wing", reagents = { 3404, 1, 2692, 1 }, creates = 4457, items = { 4609 } },
+    [6412] = { name = "Kaldorei Spider Kabob", reagents = { 5465, 1 }, creates = 5472, items = { 5482 } },
+    [6413] = { name = "Scorpid Surprise", reagents = { 5466, 1 }, creates = 5473, items = { 5483 } },
+    [6414] = { name = "Roasted Kodo Meat", reagents = { 5467, 1, 2678, 1 }, creates = 5474, items = { 5484 } },
+    [6415] = { name = "Fillet of Frenzy", reagents = { 5468, 1, 2678, 1 }, creates = 5476, items = { 5485 } },
+    [6416] = { name = "Strider Stew", reagents = { 5469, 1, 4536, 1 }, creates = 5477, items = { 5486 } },
+    [6417] = { name = "Dig Rat Stew", reagents = { 5051, 1 }, creates = 5478, items = { 5487 } },
+    [6418] = { name = "Crispy Lizard Tail", reagents = { 5470, 1, 2692, 1 }, creates = 5479, items = { 5488 } },
+    [6419] = { name = "Lean Venison", reagents = { 5471, 1, 2678, 4 }, creates = 5480, items = { 5489 } },
+    [6499] = { name = "Boiled Clams", reagents = { 5503, 1, 159, 1 }, creates = 5525, fish = true },
+    [6500] = { name = "Goblin Deviled Clams", reagents = { 5504, 1, 2692, 1 }, creates = 5527, fish = true },
+    [6501] = { name = "Clam Chowder", reagents = { 5503, 1, 1179, 1, 2678, 1 }, creates = 5526, items = { 5528 }, fish = true },
+    [7213] = { name = "Giant Clam Scorcho", reagents = { 4655, 1, 2692, 1 }, creates = 6038, items = { 6039 }, fish = true },
+    [7751] = { name = "Brilliant Smallfish", reagents = { 6291, 1 }, creates = 6290, items = { 6325 }, fish = true },
+    [7752] = { name = "Slitherskin Mackerel", reagents = { 6303, 1 }, creates = 787, items = { 6326 }, fish = true },
+    [7753] = { name = "Longjaw Mud Snapper", reagents = { 6289, 1 }, creates = 4592, items = { 6328 }, fish = true },
+    [7754] = { name = "Loch Frenzy Delight", reagents = { 6317, 1, 2678, 1 }, creates = 6316, items = { 6329 }, fish = true },
+    [7755] = { name = "Bristle Whisker Catfish", reagents = { 6308, 1 }, creates = 4593, items = { 6330 }, fish = true },
+    [7827] = { name = "Rainbow Fin Albacore", reagents = { 6361, 1 }, creates = 5095, items = { 6368 }, fish = true },
+    [7828] = { name = "Rockscale Cod", reagents = { 6362, 1 }, creates = 4594, items = { 6369 }, fish = true },
+    [8238] = { name = "Savory Deviate Delight", reagents = { 6522, 1, 2678, 1 }, creates = 6657, items = { 6661 }, fish = true },
+    [8604] = { name = "Herb Baked Egg", reagents = { 6889, 1, 2678, 1 }, creates = 6888, items = { 6891 }, auto = true },
+    [8607] = { name = "Smoked Bear Meat", reagents = { 3173, 1 }, creates = 6890, items = { 6892 } },
+    [9513] = { name = "Thistle Tea", reagents = { 2452, 1, 159, 1 }, creates = 7676, items = { 7678, 18160 } },
+    [13028] = { name = "Goldthorn Tea", reagents = { 3821, 1, 159, 1 }, creates = 10841 },
+    [15853] = { name = "Lean Wolf Steak", reagents = { 1015, 1, 2678, 1 }, creates = 12209, items = { 12227 } },
+    [15855] = { name = "Roast Raptor", reagents = { 12184, 1, 2692, 1 }, creates = 12210, items = { 12228 } },
+    [15856] = { name = "Hot Wolf Ribs", reagents = { 12203, 1, 2692, 1 }, creates = 13851, items = { 12229 } },
+    [15861] = { name = "Jungle Stew", reagents = { 12202, 1, 159, 1, 4536, 2 }, creates = 12212, items = { 12231 } },
+    [15863] = { name = "Carrion Surprise", reagents = { 12037, 1, 2692, 1 }, creates = 12213, items = { 12232 } },
+    [15865] = { name = "Mystery Stew", reagents = { 12037, 1, 2596, 1 }, creates = 12214, items = { 12233 } },
+    [15906] = { name = "Dragonbreath Chili", reagents = { 12037, 1, 4402, 1, 2692, 1 }, creates = 12217, items = { 12239 } },
+    [15910] = { name = "Heavy Kodo Stew", reagents = { 12204, 2, 3713, 1, 159, 1 }, creates = 12215, items = { 12240 } },
+    [15915] = { name = "Spiced Chili Crab", reagents = { 12206, 1, 2692, 2 }, creates = 12216, items = { 16111 } },
+    [15933] = { name = "Monster Omelet", reagents = { 12207, 1, 3713, 2 }, creates = 12218, items = { 16110 } },
+    [15935] = { name = "Crispy Bat Wing", reagents = { 12223, 1, 2678, 1 }, creates = 12224, items = { 12226 } },
+    [18238] = { name = "Spotted Yellowtail", reagents = { 4603, 1 }, creates = 6887, items = { 13939 }, fish = true },
+    [18239] = { name = "Cooked Glossy Mightfish", reagents = { 13754, 1, 3713, 1 }, creates = 13927, items = { 13940 }, fish = true },
+    [18240] = { name = "Grilled Squid", reagents = { 13755, 1, 3713, 1 }, creates = 13928, items = { 13942 }, fish = true },
+    [18241] = { name = "Filet of Redgill", reagents = { 13758, 1 }, creates = 13930, items = { 13941 }, fish = true },
+    [18242] = { name = "Hot Smoked Bass", reagents = { 13756, 1, 2692, 2 }, creates = 13929, items = { 13943 }, fish = true },
+    [18243] = { name = "Nightfin Soup", reagents = { 13759, 1, 159, 1 }, creates = 13931, items = { 13945 }, fish = true },
+    [18244] = { name = "Poached Sunscale Salmon", reagents = { 13760, 1 }, creates = 13932, items = { 13946 }, fish = true },
+    [18245] = { name = "Lobster Stew", reagents = { 13888, 1, 159, 1 }, creates = 13933, items = { 13947 }, fish = true },
+    [18246] = { name = "Mightfish Steak", reagents = { 13893, 1, 2692, 1, 3713, 1 }, creates = 13934, items = { 13948 }, fish = true },
+    [18247] = { name = "Baked Salmon", reagents = { 13889, 1, 3713, 1 }, creates = 13935, items = { 13949 }, fish = true },
+    [20626] = { name = "Undermine Clam Chowder", reagents = { 7974, 2, 2692, 1, 1179, 1 }, creates = 16766, items = { 16767 }, fish = true },
+    [20916] = { name = "Mithril Headed Trout", reagents = { 8365, 1 }, creates = 8364, items = { 17062 }, fish = true },
+    [21143] = { name = "Gingerbread Cookie", reagents = { 6889, 1, 17194, 1 }, creates = 17197, items = { 17200 } },
+    [21144] = { name = "Egg Nog", reagents = { 6889, 1, 1179, 1, 17196, 1, 17194, 1 }, creates = 17198, items = { 17201 } },
+    [21175] = { name = "Spider Sausage", reagents = { 12205, 2 }, creates = 17222 },
+    [22480] = { name = "Tender Wolf Steak", reagents = { 12208, 1, 3713, 1 }, creates = 18045, items = { 18046 } },
+    [22761] = { name = "Runn Tum Tuber Surprise", reagents = { 18255, 1, 3713, 1 }, creates = 18254, items = { 18267 } },
+    [24418] = { name = "Heavy Crocolisk Stew", reagents = { 3667, 2, 3713, 1 }, creates = 20074, items = { 20075 } },
+    [24801] = { name = "Smoked Desert Dumplings", reagents = { 20424, 1, 3713, 1 }, creates = 20452 },
+    [25659] = { name = "Dirge's Kickin' Chimaerok Chops", reagents = { 2692, 1, 9061, 1, 8150, 1, 21024, 1 }, creates = 21023, items = { 21025 } },
+    [25704] = { name = "Smoked Sagefish", reagents = { 21071, 1, 2678, 1 }, creates = 21072, items = { 21099 }, fish = true },
+    [25954] = { name = "Sagefish Delight", reagents = { 21153, 1, 2692, 1 }, creates = 21217, items = { 21219 }, fish = true },
+    [470359] = { name = "Darkclaw Bisque", reagents = { 13888, 1, 227813, 1 }, creates = 232436, items = { 232437 }, fish = true },
+    [470370] = { name = "Smoked Redgill", reagents = { 13758, 1 }, creates = 232438, items = { 232443 }, fish = true },
+    [1225758] = { name = "Prowler Steak", reagents = { 12202, 2, 239016, 1 }, creates = 238637, items = { 238645, 250394 } },
+    [1225759] = { name = "Filet o' Flank", reagents = { 12203, 2, 239016, 1 }, creates = 238638, items = { 238646, 250395 } },
+    [1225760] = { name = "Sunrise Omelette", reagents = { 12207, 2, 239016, 1 }, creates = 238639, items = { 238647, 250396 } },
+    [1225762] = { name = "Specklefin Feast", reagents = { 4603, 12, 12184, 4, 6362, 3, 239017, 1 }, creates = 238641, items = { 238649, 250398 }, fish = true },
+    [1225763] = { name = "Grand Lobster Banquet", reagents = { 13888, 12, 3712, 4, 3404, 3, 239017, 1 }, creates = 238642, items = { 238650, 239021, 250399 }, fish = true },
+    [1229737] = { name = "Basic Campfire", reagents = { 4470, 1 }, creates = 279981, auto = true },
+    [1247741] = { name = "Spinefin Halibut", reagents = { 8959, 1 }, creates = 8957, fish = true },
+    [1249957] = { name = "Peace Tea", reagents = { 159, 1, 2447, 2 }, creates = 249865, items = { 249879 } },
+    [1249958] = { name = "Royal Tea", reagents = { 1179, 1, 785, 2 }, creates = 249866, items = { 249880 } },
+    [1249959] = { name = "Root Tea", reagents = { 1205, 1, 3357, 2 }, creates = 249867, items = { 249881 } },
+    [1249960] = { name = "Triage Tea", reagents = { 1708, 1, 3818, 2 }, creates = 249868, items = { 249882 } },
+    [1249961] = { name = "Sunny Tea", reagents = { 1645, 1, 8838, 2 }, creates = 249869, items = { 249883 } },
+    [1249962] = { name = "Sage's Tea", reagents = { 8766, 1, 13465, 2 }, creates = 249870, items = { 249884 } },
+    [1249963] = { name = "Venomous Smoothie", reagents = { 159, 1, 2678, 1, 1475, 1 }, creates = 249871, items = { 249885 } },
+    [1249964] = { name = "Slimy Smoothie", reagents = { 1179, 1, 2678, 2, 3174, 1 }, creates = 249872, items = { 249886 } },
+    [1249965] = { name = "Mrrggl Smrrthle", reagents = { 1205, 1, 2692, 2, 1468, 1 }, creates = 249873, items = { 249887 } },
+    [1249966] = { name = "Calcified Smoothie", reagents = { 1708, 1, 2692, 3, 5637, 1 }, creates = 249874, items = { 249888 } },
+    [1249967] = { name = "Spicy Smoothie", reagents = { 1645, 1, 3713, 3, 4402, 1 }, creates = 249875, items = { 249889 } },
+    [1249968] = { name = "Wicked Smoothie", reagents = { 8766, 1, 3713, 4, 8146, 1 }, creates = 249876, items = { 249890 } },
+    [1250142] = { name = "Savory Stag Sliders", reagents = { 5471, 2, 2692, 3 }, creates = 250065, items = { 250173 } },
+    [1250143] = { name = "Soaring Pamplona", reagents = { 3404, 3, 3713, 3 }, creates = 250066, items = { 250174 } },
+    [1250144] = { name = "Bat Hachee", reagents = { 12223, 3, 3713, 2 }, creates = 250067, items = { 250175 } },
+    [1250145] = { name = "Savory Turtle Stew", reagents = { 3712, 3, 3713, 3 }, creates = 250068, items = { 250176 } },
+    [1250146] = { name = "Flank au Poivre", reagents = { 12203, 3, 3713, 3 }, creates = 250069, items = { 250177 } },
+    [1250147] = { name = "Bear Bruscitti", reagents = { 3730, 3, 3713, 3 }, creates = 250070, items = { 250178 } },
+    [1250148] = { name = "Steaming Stag Steak", reagents = { 5471, 3, 3713, 4 }, creates = 250071, items = { 250179 } },
+    [1250149] = { name = "Swiftstrike Steak", reagents = { 12202, 3, 3713, 2 }, creates = 250072, items = { 250180 } },
+    [1250150] = { name = "Raging Raptor Ribs", reagents = { 12184, 2, 2692, 3 }, creates = 250073, items = { 250181 } },
+    [1250151] = { name = "Bear Brisket", reagents = { 3730, 2, 2692, 3 }, creates = 250074, items = { 250182 } },
+    [1250152] = { name = "Prehistoric Pulled Raptor", reagents = { 12184, 3, 3713, 4 }, creates = 250075, items = { 250183 } },
+    [1250153] = { name = "Raptor Rouladen", reagents = { 12184, 2, 2692, 4 }, creates = 250076, items = { 250184 } },
+    [1250154] = { name = "Twice-Spiced Raptor Slice", reagents = { 12184, 1, 2678, 2 }, creates = 250077, items = { 250185 } },
+    [1250155] = { name = "Giant Scrambled Eggs", reagents = { 12207, 2, 2692, 4 }, creates = 250078, items = { 250186 } },
+    [1250156] = { name = "Tasty Raptor Bites", reagents = { 3685, 1, 2678, 4 }, creates = 250079, items = { 250187 } },
+    [1250157] = { name = "Breakfast Omelette", reagents = { 6889, 1, 2678, 4 }, creates = 250080, items = { 250188 } },
+    [1250158] = { name = "Clam Linguine", reagents = { 7974, 3, 3713, 4 }, creates = 250081, items = { 250189 }, fish = true },
+    [1252566] = { name = "Savory Whimsyfin Delight", reagents = { 251524, 1, 2678, 1 }, creates = 251525, items = { 251526 }, fish = true },
+    [1255241] = { name = "Cleansing Stew", reagents = { 252948, 1, 5471, 1, 12207, 1 }, creates = 252683, items = { 252949 } },
+    [1262978] = { name = "Cookie's Feast", reagents = { 12037, 2, 12204, 1, 3713, 1 }, creates = 279957, items = { 273102 } },
+    [1263067] = { name = "Iron Oven", reagents = { 10284, 10, 159, 5, 3713, 4 }, creates = 279982, items = { 273115 } },
+    [1270632] = { name = "Critter Cookie", reagents = { 10284, 5 }, creates = 263507, items = { 263505 } },
+    [1270633] = { name = "Skywall Souffle", reagents = { 6889, 2, 10284, 1 }, creates = 263509, items = { 263511 } },
+    [1270635] = { name = "Pincer Bites", reagents = { 2675, 1, 10284, 1 }, creates = 263512, items = { 263513 } },
+    [1283400] = { name = "Journeyman Campfire", reagents = { 11291, 1 }, creates = 279961, items = { 273087 } },
+    [1291341] = { name = "Expert Campfire", reagents = { 272941, 1 }, creates = 279974, items = { 273101 } },
+    [1294014] = { name = "Sweetpaw Jam", reagents = { 249796, 3, 3713, 1 }, creates = 267341, items = { 274415 } },
+    [1295805] = { name = "Briny Seafood Stew", reagents = { 730, 2, 12206, 1, 2692, 1 }, creates = 274971, items = { 274972 } },
+    [1295834] = { name = "Plain Ol' Paletusk", reagents = { 769, 2, 2678, 1 }, creates = 274976, items = { 274977 } },
+    [1319313] = { name = "Plated Armorfish", reagents = { 13890, 1, 3713, 1 }, creates = 286152, items = { 286153 }, fish = true },
+}

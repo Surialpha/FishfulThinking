@@ -1,0 +1,8 @@
+<!-- Key bindings: Options > Key Bindings > Fishful Thinking (a section of its own, like OpenMap).
+     No header attribute: Forever's list draws an addon header as an empty gap.
+     Names are set in FishfulThinking.lua and start with "Fishful Thinking:" so the search box finds them.
+     If you rename the buttons, update C.MACRO_BUTTON_NAME / C.HIDDEN_WEAPON_BUTTON_NAME too. -->
+<Bindings>
+    <Binding name="CLICK FishfulThinkingFishButton:LeftButton" category="Fishful Thinking"/>
+    <Binding name="CLICK FishfulThinkingWeaponButton:LeftButton" category="Fishful Thinking"/>
+</Bindings>

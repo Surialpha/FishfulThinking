@@ -1,0 +1,27 @@
+## Interface: 16001
+## Title: Fishful Thinking
+## Notes: One button for fishing: equips the pole and your fishing gear, applies the best lure, casts, reels in with the same key, gives your weapon back and tells you what your catch is worth.
+## Notes-esES: Un botón para pescar: te pone la caña y la ropa de pesca, pone el mejor cebo, lanza, recoge con la misma tecla, te devuelve el arma y te dice cuánto vale lo que pescas.
+## Notes-esMX: Un botón para pescar: te pone la caña y la ropa de pesca, pone el mejor cebo, lanza, recoge con la misma tecla, te devuelve el arma y te dice cuánto vale lo que pescas.
+## Notes-deDE: Eine Taste zum Angeln: legt Angel und Angelausrüstung an, bringt den besten Köder an, wirft aus, holt mit derselben Taste ein, gibt dir die Waffe zurück und sagt dir, was dein Fang wert ist.
+## Notes-frFR: Une touche pour pêcher : équipe la canne et votre tenue de pêche, pose le meilleur appât, lance, ramène avec la même touche, vous rend votre arme et vous dit ce que vaut votre pêche.
+## Notes-ptBR: Uma tecla para pescar: equipa a vara e as peças de pesca, coloca a melhor isca, lança, recolhe com a mesma tecla, devolve a sua arma e diz quanto vale o que você pescou.
+## Author: T&G Alphalabs
+## Version: 2.1.0
+## X-License: MIT
+## Category: Professions
+## OptionalDeps: Auctionator
+## SavedVariables: FishfulThinkingDB
+## SavedVariablesPerCharacter: FishfulThinkingCharDB
+## IconTexture: Interface\Icons\Trade_Fishing
+## AddonCompartmentFunc: FishfulThinking_OnAddonCompartmentClick
+
+Constants.lua
+Locales\enUS.lua
+Locales\esES.lua
+Locales\deDE.lua
+Locales\frFR.lua
+Locales\ptBR.lua
+Data\CookingData.lua
+Data\FishingCatches.lua
+FishfulThinking.lua
