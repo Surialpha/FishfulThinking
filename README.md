@@ -1,14 +1,8 @@
-<p align="center"><img src="media/icon.png" width="128" alt="Fishful Thinking"></p>
-
 # Fishful Thinking
 
 **One key to fish in World of Warcraft: Forever.** Press it and your pole goes on (with your fishing hat, gloves and boots), the best lure goes on the pole, and you cast. With the bobber out, the same key reels in. When you're done, or when something attacks you, your weapon comes back.
 
 It also tells you what your catch is worth, and what to do with it.
-
-**Download:** [CurseForge](https://www.curseforge.com/wow/addons/fishful-thinking) (WoW: Forever, game version 1.60.1)
-
-![Recipes tab, with the HUD above](media/screenshots/1-recipes.png)
 
 ## Features
 
@@ -21,6 +15,9 @@ It also tells you what your catch is worth, and what to do with it.
   - Your Fishing skill with its bonus.
   - Whether fish get away in this water.
   - What you just caught, rising over the HUD.
+  - Quick switches for **Lures** and **Focus mode**: one click, no need to open the options.
+  - **Session stats:** catches, catches per hour, and what they're worth per hour. Point at them for the details.
+  - In **Options → HUD**: lock it in place, pick its size (80% to 130%), and choose which parts it shows. It gets smaller to fit, in height and width.
 - **Catch value** (needs [Auctionator](https://www.curseforge.com/wow/addons/auctionator)). For everything you fish, it finds the best use: sell it to a vendor, sell it at the auction house, cook it, or make something with any of your professions. It also tells you about recipes worth learning. You see this in item tooltips, in the chat when you catch something, and in the window.
 - **One window, three tabs:**
   - **Catch value:** totals plus a list you can filter.
@@ -29,24 +26,10 @@ It also tells you what your catch is worth, and what to do with it.
 - **Fishing comfort:**
   - Marks the bobber.
   - Longer bobber range and auto loot while fishing.
-  - A sound mode so you hear the splash.
+  - A focus mode so you hear the splash: effects up, music and ambience muted.
   - Explains why a fish got away.
   - Warns you when your lure runs out.
 - **Five languages:** English, Español, Deutsch, Français and Português (English by default; change it in the options or with `/fishful language`).
-
-## Screenshots
-
-| Catch value | Fishing gear |
-| --- | --- |
-| ![Catch value](media/screenshots/2-catch-value.png) | ![Fishing gear](media/screenshots/3-fishing-gear.png) |
-| **Combat alert** | **Weapon back on by itself** |
-| ![Combat alert](media/screenshots/4-combat-alert.png) | ![Weapon back on](media/screenshots/5-weapon-on-notice.png) |
-| **Options: Fishing** | **Options: Keys** |
-| ![Options: Fishing](media/screenshots/6-options-fishing.png) | ![Options: Keys](media/screenshots/7-options-keys.png) |
-
-## Install
-
-With the CurseForge app, search for **Fishful Thinking** under WoW: Forever. To install by hand, unzip the release into `World of Warcraft\_forever_\Interface\AddOns` so you get an `AddOns\FishfulThinking` folder.
 
 ## How to use it
 
@@ -63,10 +46,12 @@ With the CurseForge app, search for **Fishful Thinking** under WoW: Forever. To 
 | `/fishful value` | Open the window on Catch value |
 | `/fishful gear` | Open the window on Fishing gear |
 | `/fishful recipes` | Open the window on Recipes |
+| `/fishful session` | Show this session's stats (`/fishful session reset` starts over) |
 | `/fishful reset` | Center the HUD |
+| `/fishful lock` | Lock or unlock the HUD |
 | `/fishful minimap` | Show or hide the minimap button |
 | `/fishful tweaks` | Turn bobber range and auto loot while fishing on or off |
-| `/fishful sound` | Turn sound mode on or off |
+| `/fishful focus` | Turn focus mode on or off |
 | `/fishful language en\|es\|de\|fr\|pt\|auto` | Set the addon's language |
 | `/fishful help` | List the commands |
 

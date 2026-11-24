@@ -7,7 +7,7 @@
 ## Notes-frFR: Une touche pour pêcher : équipe la canne et votre tenue de pêche, pose le meilleur appât, lance, ramène avec la même touche, vous rend votre arme et vous dit ce que vaut votre pêche.
 ## Notes-ptBR: Uma tecla para pescar: equipa a vara e as peças de pesca, coloca a melhor isca, lança, recolhe com a mesma tecla, devolve a sua arma e diz quanto vale o que você pescou.
 ## Author: T&G Alphalabs
-## Version: 2.1.0
+## Version: 2.2.0
 ## X-License: MIT
 ## Category: Professions
 ## OptionalDeps: Auctionator

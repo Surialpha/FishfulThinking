@@ -37,26 +37,44 @@ C.SUBCOMMANDS = {
     HELP = "help",
     MINIMAP = "minimap",
     TWEAKS = "tweaks",
-    SOUND = "sound",
+    FOCUS = "focus",
+    LOCK = "lock",
+    SESSION = "session",
     LANGUAGE = "language",
     OPTIONS = "options",
     VALUE = "value",
     GEAR = "gear",
     RECIPES = "recipes",
 }
-C.SUBCOMMAND_ORDER = { "OPTIONS", "VALUE", "GEAR", "RECIPES", "RESET", "MINIMAP", "TWEAKS", "SOUND", "LANGUAGE", "DEBUG", "HELP" }
+-- Former names of renamed subcommands, so old macros and habits keep working.
+C.SUBCOMMAND_FORMER_NAMES = {
+    FOCUS = { "sound", "sonido", "ton", "son", "som" },
+}
+C.SUBCOMMAND_ORDER = { "OPTIONS", "VALUE", "GEAR", "RECIPES", "SESSION", "RESET", "LOCK", "MINIMAP", "TWEAKS", "FOCUS", "LANGUAGE", "DEBUG", "HELP" }
 C.RIGHT_BUTTON = "RightButton"
 
 -- Options (per character) and their defaults. Everything here is on the options page.
 C.OPTION_DEFAULTS = {
     showPanel = true,
     hudWithPole = true,
+    lockPanel = false,
+    panelScale = 1,
+    showSessionStats = true,
+    -- Parts of the HUD; hiding one makes it shorter.
+    hudStatus = true,
+    hudLureBar = true,
+    hudSkill = true,
+    hudWater = true,
+    hudValueButton = true,
+    hudLureSwitch = true,
+    hudFocusSwitch = true,
     showMinimapButton = true,
     chatHints = true,
     useLures = true,
     reelWithFishKey = true,
     clearTarget = true,
     sessionTweaks = true,
+    -- Focus mode (its saved name is from when it was called sound mode).
     soundMode = false,
     combatWeaponSwap = true,
     combatAlert = true,
@@ -78,6 +96,13 @@ C.LEGACY_OPTION_FLAGS = {
     { flag = "soundMode", option = "soundMode", value = true },
 }
 
+-- HUD sizes to choose from (1 = the normal size), shown as percentages.
+C.HUD_SCALES = { 0.8, 0.9, 1, 1.15, 1.3 }
+C.PERCENT = 100
+C.PERCENT_FORMAT = "%d%%"
+-- Two sizes this close are the same one (the game keeps scales a little rounded).
+C.SCALE_TOLERANCE = 0.001
+
 -- Options: in the game's Options > AddOns, Fishful Thinking (General) and one page per
 -- section under it. Each option shows its explanation under its name. Texts are keys
 -- of the locale tables.
@@ -85,14 +110,41 @@ C.OPTIONS_SECTIONS = {
     { key = "GENERAL", title = "TITLE", description = "OPTIONS_DESC_GENERAL", items = {
         { kind = "buttons", buttons = {
             { action = "OPEN_WINDOW", label = "OPT_OPEN_WINDOW", tip = "OPT_OPEN_WINDOW_TIP" },
-            { action = "RESET_PANEL", label = "OPT_RESET_PANEL", tip = "OPT_RESET_PANEL_TIP" },
         } },
         { kind = "header", text = "OPTIONS_SECTION_INTERFACE" },
+        { kind = "switch", option = "showMinimapButton", label = "OPT_SHOW_MINIMAP", tip = "OPT_SHOW_MINIMAP_TIP" },
+        { kind = "language", label = "OPT_LANGUAGE", tip = "OPT_LANGUAGE_TIP" },
+    } },
+    -- The HUD: where it is, how big, and which of its parts show ("flat": depends on the
+    -- HUD being on, without the indent).
+    { key = "HUD", title = "OPTIONS_SECTION_HUD", description = "OPTIONS_DESC_HUD", items = {
+        { kind = "buttons", buttons = {
+            { action = "RESET_PANEL", label = "OPT_RESET_PANEL", tip = "OPT_RESET_PANEL_TIP" },
+        } },
         { kind = "switch", option = "showPanel", label = "OPT_SHOW_PANEL", tip = "OPT_SHOW_PANEL_TIP" },
         { kind = "switch", option = "hudWithPole", label = "OPT_HUD_WITH_POLE", tip = "OPT_HUD_WITH_POLE_TIP",
           requires = "showPanel" },
-        { kind = "switch", option = "showMinimapButton", label = "OPT_SHOW_MINIMAP", tip = "OPT_SHOW_MINIMAP_TIP" },
-        { kind = "language", label = "OPT_LANGUAGE", tip = "OPT_LANGUAGE_TIP" },
+        { kind = "switch", option = "lockPanel", label = "OPT_LOCK_PANEL", tip = "OPT_LOCK_PANEL_TIP",
+          requires = "showPanel" },
+        { kind = "choice", option = "panelScale", label = "OPT_PANEL_SCALE", tip = "OPT_PANEL_SCALE_TIP",
+          choices = C.HUD_SCALES, requires = "showPanel" },
+        { kind = "header", text = "OPTIONS_HUD_PARTS" },
+        { kind = "switch", option = "hudStatus", label = "OPT_HUD_STATUS", tip = "OPT_HUD_STATUS_TIP",
+          requires = "showPanel", flat = true },
+        { kind = "switch", option = "hudLureBar", label = "OPT_HUD_LURE_BAR", tip = "OPT_HUD_LURE_BAR_TIP",
+          requires = "showPanel", flat = true },
+        { kind = "switch", option = "hudSkill", label = "OPT_HUD_SKILL", tip = "OPT_HUD_SKILL_TIP",
+          requires = "showPanel", flat = true },
+        { kind = "switch", option = "hudWater", label = "OPT_HUD_WATER", tip = "OPT_HUD_WATER_TIP",
+          requires = "showPanel", flat = true },
+        { kind = "switch", option = "showSessionStats", label = "OPT_SESSION_STATS", tip = "OPT_SESSION_STATS_TIP",
+          requires = "showPanel", flat = true },
+        { kind = "switch", option = "hudValueButton", label = "OPT_HUD_VALUE_BUTTON", tip = "OPT_HUD_VALUE_BUTTON_TIP",
+          requires = "showPanel", flat = true },
+        { kind = "switch", option = "hudLureSwitch", label = "OPT_HUD_LURE_SWITCH", tip = "OPT_HUD_LURE_SWITCH_TIP",
+          requires = "showPanel", flat = true },
+        { kind = "switch", option = "hudFocusSwitch", label = "OPT_HUD_FOCUS_SWITCH", tip = "OPT_HUD_FOCUS_SWITCH_TIP",
+          requires = "showPanel", flat = true },
     } },
     { key = "KEYS", title = "OPTIONS_SECTION_KEYS", description = "OPTIONS_DESC_KEYS", items = {
         { kind = "binding", command = "FISH", label = "OPT_KEY_FISH", tip = "OPT_KEY_FISH_DESC" },
@@ -106,7 +158,7 @@ C.OPTIONS_SECTIONS = {
         { kind = "switch", option = "clearTarget", label = "OPT_CLEAR_TARGET", tip = "OPT_CLEAR_TARGET_TIP" },
         { kind = "switch", option = "markBobber", label = "OPT_MARK_BOBBER", tip = "OPT_MARK_BOBBER_TIP" },
         { kind = "switch", option = "sessionTweaks", label = "OPT_TWEAKS", tip = "OPT_TWEAKS_TIP" },
-        { kind = "switch", option = "soundMode", label = "OPT_SOUND", tip = "OPT_SOUND_TIP" },
+        { kind = "switch", option = "soundMode", label = "OPT_FOCUS", tip = "OPT_FOCUS_TIP" },
     } },
     { key = "COMBAT", title = "OPTIONS_SECTION_COMBAT", description = "OPTIONS_DESC_COMBAT", items = {
         { kind = "switch", option = "combatAutoEquip", label = "OPT_AUTO_EQUIP", tip = "OPT_AUTO_EQUIP_TIP" },
@@ -266,6 +318,10 @@ C.ACTION_INFO_MACRO = "macro"
 C.DEFAULT_MAX_ACCOUNT_MACROS = 120
 C.DEFAULT_MAX_CHARACTER_MACROS = 18
 C.MACRO_LINES = {
+    -- Stops the fishing first, so the weapon goes on in the same press. Addons can't
+    -- cancel a cast by themselves; a key press running a macro can.
+    STOP_CASTING = "/stopcasting",
+    COMBAT_STOP_CASTING = "/stopcasting [combat]",
     -- In combat, the Fish macro gives your weapon back and stops there.
     COMBAT_EQUIP = "/equipslot [combat] %d item:%d",
     STOP_IN_COMBAT = "/stopmacro [combat]",
@@ -346,7 +402,7 @@ C.BOBBER_MARK_CVARS = {
     { name = "SoftTargetIconGameObject", value = "1" },
     { name = "SoftTargetIconInteract", value = "1" },
 }
--- Sound mode (optional): hear the splash better.
+-- Focus mode (optional): hear the splash better.
 C.SOUND_CVARS = {
     { name = "Sound_SFXVolume", value = "1" },
     { name = "Sound_EnableMusic", value = "0" },
@@ -369,6 +425,7 @@ C.LURE_SOURCE = {
 
 -- Times (seconds)
 C.SECONDS_PER_MINUTE = 60
+C.MINUTES_PER_HOUR = 60
 C.SECONDS_PER_HOUR = 3600
 C.EQUIPMENT_SETTLE_SECONDS = 1
 C.LURE_PENDING_SECONDS = 15
@@ -616,9 +673,12 @@ C.HUD = {
     BUTTON_GAP = 8,
     SLOT_SCALE = 1.72,
     GLOW_SCALE = 1.85,
-    -- Coin, gear and close: one size, centred on the title line.
+    -- Quick switches, coin, gear and close: one size, centred on the title line.
     ICON_BUTTON_SIZE = 16,
     ICON_BUTTON_GAP = 4,
+    -- The quick switches sit a little apart from the coin; off, they look grey and faded.
+    TOGGLE_GROUP_GAP = 10,
+    TOGGLE_OFF_ALPHA = 0.45,
     -- Icons trimmed of their own border, like the action bars do.
     ICON_TEXCOORD = { 0.08, 0.92, 0.08, 0.92 },
     HOTKEY_OFFSET_X = -2,
@@ -631,6 +691,17 @@ C.HUD = {
     BAR_TEXT_INSET = 6,
     ROW_GAP = 8,
     FOOTER_HEIGHT = 14,
+    -- Session stats: one more line under the footer, when it's on.
+    STATS_GAP = 4,
+    STATS_HEIGHT = 14,
+    -- Width: as wide as the widest part shown, up to MAX_WIDTH. The status column is
+    -- STATUS_WIDTH (its hint wraps); every other part is measured with the longest texts it
+    -- can show (WIDTH_SAMPLES fill in the numbers), so the HUD doesn't change width while
+    -- you fish.
+    STATUS_WIDTH = 160,
+    ROW_TEXT_GAP = 12,
+    MAX_WIDTH = 320,
+    WIDTH_SAMPLES = { SKILL = 300, BONUS = 100, COUNT = 999, MONEY = 999900 },
     RIPPLE_SIZE = 10,
     TEXT_GAP = 3,
     -- The game's own art, present in every client.
@@ -661,7 +732,27 @@ C.HUD = {
     VISIBILITY_STATE = "visibility",
     VISIBILITY_CONDITION = "[equipped:%s] show; hide",
 }
+-- Quick switches in the HUD's header, left to right: options you change while fishing,
+-- without opening the options. Each one flips the same option as its switch there.
+-- The icon is the item's own when it has one (iconItem), else the texture. "show" is the
+-- option that puts the switch on the HUD at all.
+C.HUD_TOGGLES = {
+    { option = "useLures", iconItem = 6529, icon = "Interface\\Icons\\INV_Misc_Orb_03",  -- Shiny Bauble
+      label = "OPT_USE_LURES", tip = "OPT_USE_LURES_TIP", show = "hudLureSwitch" },
+    { option = "soundMode", icon = "Interface\\Icons\\INV_Misc_Bell_01",
+      label = "OPT_FOCUS", tip = "OPT_FOCUS_TIP", show = "hudFocusSwitch" },
+}
 C.HUD_CLOCK_FORMAT = "%d:%02d"
+
+-- Session stats. A session is fishing with no break longer than BREAK_SECONDS; it is kept
+-- per character, so it survives /reload and a quick logout. Only the time between casts
+-- and catches counts as fishing time (gaps up to ACTIVE_GAP_SECONDS); rates show once
+-- there are MIN_RATE_SECONDS of it. Money per hour is rounded to silver.
+C.STATS = {
+    BREAK_SECONDS = 1800,
+    ACTIVE_GAP_SECONDS = 60,
+    MIN_RATE_SECONDS = 120,
+}
 -- Short key names on the buttons, like the action bars ("s-F", "M3").
 C.HOTKEY_ABBREVIATIONS = {
     { "SHIFT%-", "s-" }, { "CTRL%-", "c-" }, { "ALT%-", "a-" }, { "META%-", "m-" },

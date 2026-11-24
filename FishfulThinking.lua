@@ -76,6 +76,8 @@ local Fx = { toastToken = 0 }
 local Window = { tabs = {}, pages = {} }
 -- The options pages: switches, key chips and the pages themselves.
 local Options = {}
+-- Session stats: catches, fishing time and what it's worth.
+local Stats = {}
 local bindingOwner = CreateFrame("Frame")
 -- Defined with the options page further down; used earlier by the panel and minimap.
 local RefreshOptions = function() end
@@ -422,7 +424,7 @@ end
 
 -- Fishing session tweaks -------------------------------------------------------------
 -- While you fish: longer bobber range for Interact and auto loot (and, optionally,
--- sound mode). Your own values are saved and restored when the session ends.
+-- focus mode). Your own values are saved and restored when the session ends.
 
 local function GetSessionCVars()
     local list = {}
@@ -816,12 +818,13 @@ function Gear.AppendWithinLimit(lines, extra, limit)
     end
 end
 
--- Weapon (and, out of combat, your usual pieces instead of the fishing ones).
+-- Stops the fishing, then the weapon (and, out of combat, your usual pieces instead of
+-- the fishing ones).
 local function BuildWeaponMacroText(weapons)
     if not (weapons and weapons.mainHand) then
         return nil
     end
-    local lines = { C.EQUIP_SLOT_LINE:format(C.MAIN_HAND_SLOT, weapons.mainHand) }
+    local lines = { C.MACRO_LINES.STOP_CASTING, C.EQUIP_SLOT_LINE:format(C.MAIN_HAND_SLOT, weapons.mainHand) }
     if weapons.offHand then
         table.insert(lines, C.EQUIP_SLOT_LINE:format(C.OFF_HAND_SLOT, weapons.offHand))
     end
@@ -833,13 +836,14 @@ local function BuildWeaponMacroText(weapons)
     return table.concat(lines, C.MACRO_LINE_SEPARATOR)
 end
 
--- Action bar macro for Fish: in combat it re-equips the weapon and stops; out of
--- combat it clears the target (Interact prefers it over the bobber), puts on your
--- fishing gear with the pole, and fishes.
+-- Action bar macro for Fish: in combat it stops the fishing, re-equips the weapon and
+-- stops there; out of combat it clears the target (Interact prefers it over the
+-- bobber), puts on your fishing gear with the pole, and fishes.
 local function BuildFishingMacroText()
     local lines = {}
     local weapons = db and db.weapons
     if GetOption("combatWeaponSwap") and weapons and weapons.mainHand then
+        table.insert(lines, C.MACRO_LINES.COMBAT_STOP_CASTING)
         table.insert(lines, C.MACRO_LINES.COMBAT_EQUIP:format(C.MAIN_HAND_SLOT, weapons.mainHand))
         if weapons.offHand then
             table.insert(lines, C.MACRO_LINES.COMBAT_EQUIP:format(C.OFF_HAND_SLOT, weapons.offHand))
@@ -1405,6 +1409,46 @@ function Hud.CreateIconButton(parent, texture, title, tip, onClick)
     return button
 end
 
+-- A quick switch's tooltip: the option, what it does, and whether it is on.
+function Hud.ShowToggleTooltip(button)
+    local toggle = button.toggle
+    local on = GetOption(toggle.option)
+    GameTooltip:SetOwner(button, C.TOOLTIP_ANCHOR)
+    GameTooltip:SetText(L[toggle.label])
+    local r, g, b = unpack(C.COLORS.TOOLTIP_TEXT)
+    GameTooltip:AddLine(L[toggle.tip], r, g, b, true)
+    GameTooltip:AddLine(on and L.HUD_TOGGLE_ON or L.HUD_TOGGLE_OFF, unpack(on and C.COLORS.HUD_GOOD or C.COLORS.MUTED))
+    GameTooltip:Show()
+end
+
+-- On, a switch shows its icon in colour; off, grey and faded.
+function Hud.RefreshToggles()
+    for _, button in ipairs(Hud.toggles or {}) do
+        local on = GetOption(button.toggle.option) and true or false
+        local icon = button.GetNormalTexture and button:GetNormalTexture()
+        if icon and icon.SetDesaturated then
+            icon:SetDesaturated(not on)
+        end
+        button:SetAlpha(on and 1 or C.HUD.TOGGLE_OFF_ALPHA)
+    end
+end
+
+-- The quick switches (C.HUD_TOGGLES), left to right; Hud.LayoutHeader places them.
+function Hud.CreateToggles(parent)
+    Hud.toggles = {}
+    for _, toggle in ipairs(C.HUD_TOGGLES) do
+        local texture = (toggle.iconItem and GetItemIcon(toggle.iconItem)) or toggle.icon
+        local button = Hud.CreateIconButton(parent, texture, L[toggle.label], L[toggle.tip], function(self)
+            Hud.ToggleOption(toggle.option)
+            Hud.ShowToggleTooltip(self)
+        end)
+        button.toggle = toggle
+        button:SetScript("OnEnter", Hud.ShowToggleTooltip)
+        table.insert(Hud.toggles, button)
+    end
+    Hud.RefreshToggles()
+end
+
 -- The shortest of these keys, written short ("s-F", "M3"), or "".
 function Hud.FirstKey(keys)
     local list = {}
@@ -1467,7 +1511,7 @@ function Hud.RefreshStatus()
     Hud.statusTitle:SetText(title)
     Hud.statusSub:SetText(sub)
     Hud.SetGlow(panelFishButton, fishing)
-    Hud.ripple:SetShown(fishing)
+    Hud.ripple:SetShown(fishing and GetOption("hudStatus") and true or false)
 
     local rank, bonus = Hud.GetFishingSkill()
     if rank then
@@ -1499,6 +1543,139 @@ local function RefreshPanel()
     panelWeaponButton.icon:SetDesaturated(not mainHand or alreadyEquipped)
     Hud.RefreshStatus()
     Hud.RefreshLureBar()
+    Hud.RefreshStats()
+end
+
+-- Session stats -------------------------------------------------------------------------
+-- See C.STATS. Kept in the character's saved data as db.session.
+
+-- This session, or nil when there is none (never fished, or the break was too long).
+function Stats.Get()
+    local session = db and db.session
+    if not session or time() - (session.lastAt or 0) > C.STATS.BREAK_SECONDS then
+        return nil
+    end
+    return session
+end
+
+-- Fishing goes on (a cast or a catch): the time since the last one counts, unless it
+-- was a break. Starts a new session after a long one.
+function Stats.Touch()
+    if not db then
+        return nil
+    end
+    local now = time()
+    local session = Stats.Get()
+    if not session then
+        session = { startedAt = now, lastAt = now, activeSeconds = 0, catches = 0, value = 0 }
+        db.session = session
+    end
+    local gap = now - session.lastAt
+    if gap > 0 and gap <= C.STATS.ACTIVE_GAP_SECONDS then
+        session.activeSeconds = session.activeSeconds + gap
+    end
+    session.lastAt = now
+    return session
+end
+
+-- One catch, worth this much copper (the best use of everything in it).
+function Stats.AddCatch(value)
+    local session = Stats.Touch()
+    if session then
+        session.catches = session.catches + 1
+        session.value = session.value + (value or 0)
+    end
+    Hud.RefreshStats()
+end
+
+function Stats.Reset()
+    if db then
+        db.session = nil
+    end
+    Hud.RefreshStats()
+end
+
+-- Per hour of fishing, or nil while there's too little time to tell.
+function Stats.PerHour(amount, session)
+    if session.activeSeconds < C.STATS.MIN_RATE_SECONDS then
+        return nil
+    end
+    return amount * C.SECONDS_PER_HOUR / session.activeSeconds
+end
+
+-- Money as is below a gold; from a gold on, rounded to silver so it stays short.
+function Stats.Money(copper)
+    local perSilver = C.VALUE.COPPER_PER_SILVER
+    copper = math.floor(copper + 0.5)
+    if copper >= C.VALUE.COPPER_PER_GOLD then
+        copper = math.floor(copper / perSilver + 0.5) * perSilver
+    end
+    return Value.Money(copper)
+end
+
+-- "41" catches or "5g 12s" per hour, or a dash while too early to tell.
+function Stats.RateText(amount, session, isMoney)
+    local rate = Stats.PerHour(amount, session)
+    if not rate then
+        return C.WINDOW.NO_VALUE
+    end
+    return isMoney and Stats.Money(rate) or tostring(math.floor(rate + 0.5))
+end
+
+function Stats.Duration(seconds)
+    local minutes = math.floor(seconds / C.SECONDS_PER_MINUTE)
+    if minutes >= C.MINUTES_PER_HOUR then
+        return L.DURATION_HOURS:format(math.floor(minutes / C.MINUTES_PER_HOUR), minutes % C.MINUTES_PER_HOUR)
+    end
+    return L.DURATION_MINUTES:format(minutes)
+end
+
+-- Time, catches and worth, one line each.
+function Stats.Lines(session)
+    return {
+        L.SESSION_TIME:format(Stats.Duration(session.activeSeconds)),
+        L.SESSION_CATCHES:format(session.catches, Stats.RateText(session.catches, session)),
+        L.SESSION_VALUE:format(Stats.Money(session.value), Stats.RateText(session.value, session, true)),
+    }
+end
+
+function Stats.Summary(session)
+    return L.SESSION_SUMMARY:format(session.catches, Stats.Duration(session.activeSeconds),
+        Stats.RateText(session.catches, session), Stats.Money(session.value), Stats.RateText(session.value, session, true))
+end
+
+function Hud.RefreshStats()
+    local stats = Hud.stats
+    if not (stats and stats:IsShown()) then
+        return
+    end
+    local session = Stats.Get()
+    if not session or session.catches == 0 then
+        stats.left:SetText(L.HUD_SESSION_EMPTY)
+        stats.right:SetText("")
+        return
+    end
+    stats.left:SetText(L.HUD_SESSION_CATCHES:format(session.catches, Stats.RateText(session.catches, session)))
+    stats.right:SetText(L.HUD_SESSION_VALUE:format(Stats.Money(session.value), Stats.RateText(session.value, session, true)))
+end
+
+function Hud.ShowStatsTooltip(owner)
+    local session = Stats.Get()
+    GameTooltip:SetOwner(owner, C.TOOLTIP_ANCHOR)
+    GameTooltip:SetText(L.SESSION_TITLE)
+    local r, g, b = unpack(C.COLORS.TOOLTIP_TEXT)
+    if session and session.catches > 0 then
+        for _, line in ipairs(Stats.Lines(session)) do
+            GameTooltip:AddLine(line, r, g, b)
+        end
+        GameTooltip:AddLine(L.SESSION_VALUE_NOTE:format(L.VALUE_TITLE), r, g, b, true)
+    else
+        GameTooltip:AddLine(L.HUD_SESSION_EMPTY, r, g, b)
+    end
+    local muted = C.COLORS.MUTED
+    GameTooltip:AddLine(L.SESSION_BREAK_NOTE:format(C.STATS.BREAK_SECONDS / C.SECONDS_PER_MINUTE), muted[1], muted[2], muted[3], true)
+    GameTooltip:AddLine(L.SESSION_RESET_HINT:format(C.SLASH_COMMAND, L.CMD_SESSION, L.CMD_SESSION_RESET), muted[1], muted[2], muted[3], true)
+    GameTooltip:Show()
 end
 
 -- "+1 Raw Redgill" rises over the HUD and fades.
@@ -1530,6 +1707,153 @@ local function RestorePanelPosition()
     else
         panel:SetPoint(layout.DEFAULT_POINT, UIParent, layout.DEFAULT_POINT, layout.DEFAULT_X, layout.DEFAULT_Y)
     end
+end
+
+-- Resizes the HUD around its centre, so it stays where you put it. Out of combat only
+-- (the HUD holds secure buttons).
+function Hud.ApplyScale()
+    local scale = GetOption("panelScale")
+    if not (panel and scale) then
+        return
+    end
+    local current = panel:GetScale()
+    if math.abs(scale - current) < C.SCALE_TOLERANCE then
+        return
+    end
+    local x, y = panel:GetCenter()
+    panel:SetScale(scale)
+    if x and y then
+        panel:ClearAllPoints()
+        panel:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x * current / scale, y * current / scale)
+        SavePanelPosition()
+    end
+end
+
+-- How wide a text is in this font (a hidden string measures it, then is emptied).
+function Hud.TextWidth(font, text)
+    Hud.measures = Hud.measures or {}
+    local measure = Hud.measures[font]
+    if not measure then
+        measure = panel:CreateFontString(nil, "OVERLAY", font)
+        measure:Hide()
+        Hud.measures[font] = measure
+    end
+    measure:SetText(text)
+    local width = Window.TextWidth(measure, text)
+    measure:SetText("")
+    return width
+end
+
+-- The narrowest each part can be without cutting its texts: the longest ones it can show.
+function Hud.PartWidths()
+    local style, fonts = C.HUD, C.FONTS
+    local sample = style.WIDTH_SAMPLES
+    local function Widest(font, ...)
+        local widest = 0
+        for index = 1, select("#", ...) do
+            widest = math.max(widest, Hud.TextWidth(font, (select(index, ...))))
+        end
+        return widest
+    end
+    local money = Stats.Money(sample.MONEY)
+    return {
+        status = style.STATUS_GAP + style.STATUS_WIDTH,
+        bar = (style.BAR_INSET + style.BAR_TEXT_INSET) * 2 + style.ROW_TEXT_GAP
+            + Widest(fonts.HUD_BAR, L.HUD_LURE, L.HUD_NO_LURE)
+            + Widest(fonts.HUD_BAR, Hud.Clock(style.DEFAULT_LURE_SECONDS), L.HUD_LURES_LEFT:format(sample.COUNT),
+                L.STATUS_NO_LURES_LEFT),
+        skill = Widest(fonts.HUD_FOOTER, L.HUD_SKILL_BONUS:format(sample.SKILL, sample.BONUS)),
+        water = Widest(fonts.HUD_FOOTER, L.HUD_ZONE_OK, L.HUD_ZONE_ESCAPES),
+        stats = math.max(Widest(fonts.HUD_FOOTER, L.HUD_SESSION_EMPTY),
+            Widest(fonts.HUD_FOOTER, L.HUD_SESSION_CATCHES:format(sample.COUNT, tostring(sample.COUNT)))
+            + style.ROW_TEXT_GAP + Widest(fonts.HUD_FOOTER, L.HUD_SESSION_VALUE:format(money, money))),
+    }
+end
+
+-- The title bar's icons, right to left: close, options, then the coin and the quick
+-- switches that are shown. The title ends before the last one. Returns how wide the
+-- title bar needs to be (inside the padding) for the title to fit.
+function Hud.LayoutHeader()
+    local style = C.HUD
+    local icons = (Hud.closeButton and style.ICON_BUTTON_SIZE + style.ICON_BUTTON_GAP or 0) + style.ICON_BUTTON_SIZE
+    local right, gap = Hud.headerAnchor, style.ICON_BUTTON_GAP
+    local coin = Hud.valueButton
+    local coinShown = GetOption("hudValueButton") and true or false
+    coin:SetShown(coinShown)
+    if coinShown then
+        coin:ClearAllPoints()
+        coin:SetPoint("RIGHT", right, "LEFT", -gap, 0)
+        right = coin
+        icons = icons + gap + style.ICON_BUTTON_SIZE
+    end
+    gap = style.TOGGLE_GROUP_GAP
+    for index = #Hud.toggles, 1, -1 do
+        local button = Hud.toggles[index]
+        local shown = GetOption(button.toggle.show) and true or false
+        button:SetShown(shown)
+        if shown then
+            button:ClearAllPoints()
+            button:SetPoint("RIGHT", right, "LEFT", -gap, 0)
+            icons = icons + gap + style.ICON_BUTTON_SIZE
+            right, gap = button, style.ICON_BUTTON_GAP
+        end
+    end
+    if Hud.titleEnd ~= right then
+        Hud.title:SetPoint("RIGHT", right, "LEFT", -style.TEXT_GAP * 2, 0)
+        Hud.titleEnd = right
+    end
+    return style.LOGO_SIZE + style.TEXT_GAP * 4 + Hud.TextWidth(C.FONTS.HUD_TITLE, L.TITLE) + icons
+end
+
+-- Stacks the rows under the buttons, leaving out the hidden ones, and fits the HUD's
+-- height and width to them. Out of combat only (the HUD holds secure buttons).
+function Hud.Layout()
+    if not (panel and Hud.stats) then
+        return
+    end
+    local style = C.HUD
+    local parts = Hud.PartWidths()
+    local content = Hud.LayoutHeader()
+
+    local status = GetOption("hudStatus") and true or false
+    Hud.statusTitle:SetShown(status)
+    Hud.statusSub:SetShown(status)
+    if not status then
+        Hud.ripple:Hide()
+    end
+    content = math.max(content, style.BUTTON_SIZE * 2 + style.BUTTON_GAP + (status and parts.status or 0))
+
+    local showSkill = GetOption("hudSkill") and true or false
+    local showWater = GetOption("hudWater") and true or false
+    Hud.skillText:SetShown(showSkill)
+    Hud.zoneText:SetShown(showWater)
+    local footerWidth = (showSkill and parts.skill or 0) + (showWater and parts.water or 0)
+        + ((showSkill and showWater) and style.ROW_TEXT_GAP or 0)
+    local rows = {
+        { frame = Hud.lureBarHolder, shown = GetOption("hudLureBar"), height = style.BAR_HEIGHT, width = parts.bar },
+        { frame = Hud.footer, shown = showSkill or showWater, height = style.FOOTER_HEIGHT, width = footerWidth },
+        { frame = Hud.stats, shown = GetOption("showSessionStats"), height = style.STATS_HEIGHT, width = parts.stats },
+    }
+    local y = -(style.PADDING + style.HEADER_HEIGHT + style.ROW_GAP + style.BUTTON_SIZE)
+    local previous
+    for _, row in ipairs(rows) do
+        local shown = row.shown and true or false
+        row.frame:SetShown(shown)
+        if shown then
+            -- The stats line sits close under the footer; any other row a row gap down.
+            local closeToFooter = row.frame == Hud.stats and previous == Hud.footer
+            y = y - (closeToFooter and style.STATS_GAP or style.ROW_GAP)
+            row.frame:ClearAllPoints()
+            row.frame:SetPoint("TOPLEFT", panel, "TOPLEFT", style.PADDING, y)
+            row.frame:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -style.PADDING, y)
+            y = y - row.height
+            previous = row.frame
+            content = math.max(content, row.width)
+        end
+    end
+    panel:SetWidth(math.min(content + style.PADDING * 2, style.MAX_WIDTH))
+    panel:SetHeight(-y + style.PADDING)
+    Hud.RefreshStats()
 end
 
 local function SetPanelShown(shown)
@@ -1612,6 +1936,8 @@ local function CreatePanel()
 
     panel = CreateFrame("Frame", C.PANEL_NAME, UIParent, BackdropTemplateMixin and C.BACKDROP_TEMPLATE or nil)
     panel:SetSize(width, height)
+    -- Its saved position was taken at this size.
+    panel:SetScale(GetOption("panelScale"))
     if panel.SetBackdrop then
         panel:SetBackdrop(C.BACKDROP)
         panel:SetBackdropColor(unpack(C.COLORS.HUD_BACKGROUND))
@@ -1622,7 +1948,7 @@ local function CreatePanel()
     panel:EnableMouse(true)
     panel:RegisterForDrag(C.DRAG_BUTTON)
     panel:SetScript("OnDragStart", function(self)
-        if not InCombatLockdown() then
+        if not InCombatLockdown() and not GetOption("lockPanel") then
             self:StartMoving()
         end
     end)
@@ -1631,8 +1957,8 @@ local function CreatePanel()
         SavePanelPosition()
     end)
 
-    -- Header: icon, name, and buttons for the catch value, the options and closing.
-    -- Everything sits on one line, centred, inside the border.
+    -- Header: icon, name, quick switches, and buttons for the catch value, the options
+    -- and closing. Everything sits on one line, centred, inside the border.
     local headerY = -(style.PADDING + style.HEADER_HEIGHT / 2)
     local logo = panel:CreateTexture(nil, "ARTWORK")
     logo:SetSize(style.LOGO_SIZE, style.LOGO_SIZE)
@@ -1642,6 +1968,7 @@ local function CreatePanel()
 
     local hasClose, close = pcall(CreateFrame, "Button", nil, panel, C.CLOSE_BUTTON_TEMPLATE)
     local rightmost
+    Hud.closeButton = hasClose and close or nil
     if hasClose and close then
         close:SetSize(style.ICON_BUTTON_SIZE, style.ICON_BUTTON_SIZE)
         close:SetPoint("RIGHT", panel, "TOPRIGHT", -style.PADDING, headerY)
@@ -1658,14 +1985,16 @@ local function CreatePanel()
     else
         optionsButton:SetPoint("RIGHT", panel, "TOPRIGHT", -style.PADDING, headerY)
     end
-    local valueButton = Hud.CreateIconButton(panel, C.VALUE.ICON, L.VALUE_TITLE, L.VALUE_BUTTON_TIP, function()
+    -- The coin and the quick switches can be hidden: Hud.LayoutHeader places them.
+    Hud.headerAnchor = optionsButton
+    Hud.valueButton = Hud.CreateIconButton(panel, C.VALUE.ICON, L.VALUE_TITLE, L.VALUE_BUTTON_TIP, function()
         Value.Toggle()
     end)
-    valueButton:SetPoint("RIGHT", optionsButton, "LEFT", -style.ICON_BUTTON_GAP, 0)
+    Hud.CreateToggles(panel)
 
     local title = panel:CreateFontString(nil, "OVERLAY", C.FONTS.HUD_TITLE)
     title:SetPoint("LEFT", logo, "RIGHT", style.TEXT_GAP * 2, 0)
-    title:SetPoint("RIGHT", valueButton, "LEFT", -style.TEXT_GAP * 2, 0)
+    Hud.title = title
     title:SetJustifyH("LEFT")
     title:SetWordWrap(false)
     title:SetText(L.TITLE)
@@ -1743,17 +2072,34 @@ local function CreatePanel()
     ripple:Hide()
     Hud.ripple = ripple
 
+    -- Rows under the buttons, each one optional; Hud.Layout stacks the ones shown.
     -- The lure bar.
     local barHolder, bar = Hud.CreateLureBar(panel)
-    barHolder:SetPoint("TOPLEFT", panelFishButton, "BOTTOMLEFT", 0, -style.ROW_GAP)
-    barHolder:SetPoint("RIGHT", panel, "RIGHT", -style.PADDING, 0)
+    barHolder:SetHeight(style.BAR_HEIGHT)
+    Hud.lureBarHolder = barHolder
     Hud.lureBar = bar
 
     -- Footer: Fishing skill, and how this water treats you.
-    Hud.skillText = panel:CreateFontString(nil, "OVERLAY", C.FONTS.HUD_FOOTER)
-    Hud.skillText:SetPoint("TOPLEFT", barHolder, "BOTTOMLEFT", 0, -style.ROW_GAP)
-    Hud.zoneText = panel:CreateFontString(nil, "OVERLAY", C.FONTS.HUD_FOOTER)
-    Hud.zoneText:SetPoint("TOPRIGHT", barHolder, "BOTTOMRIGHT", 0, -style.ROW_GAP)
+    local footer = CreateFrame("Frame", nil, panel)
+    footer:SetHeight(style.FOOTER_HEIGHT)
+    Hud.skillText = footer:CreateFontString(nil, "OVERLAY", C.FONTS.HUD_FOOTER)
+    Hud.skillText:SetPoint("TOPLEFT")
+    Hud.zoneText = footer:CreateFontString(nil, "OVERLAY", C.FONTS.HUD_FOOTER)
+    Hud.zoneText:SetPoint("TOPRIGHT")
+    Hud.footer = footer
+
+    -- Session stats: catches and what they're worth, per hour; the details on hover.
+    local stats = CreateFrame("Frame", nil, panel)
+    stats:SetHeight(style.STATS_HEIGHT)
+    stats.left = stats:CreateFontString(nil, "OVERLAY", C.FONTS.HUD_FOOTER)
+    stats.left:SetPoint("LEFT")
+    stats.right = stats:CreateFontString(nil, "OVERLAY", C.FONTS.HUD_FOOTER)
+    stats.right:SetPoint("RIGHT")
+    stats:EnableMouse(true)
+    stats:SetScript("OnEnter", Hud.ShowStatsTooltip)
+    stats:SetScript("OnLeave", HideTooltip)
+    Hud.stats = stats
+    Hud.Layout()
 
     -- What you just caught rises and fades.
     local float = CreateFrame("Frame", nil, panel)
@@ -2864,6 +3210,7 @@ function Value.RecordLoot()
     if type(zone) == "string" and zone ~= "" then
         Hints.zoneCatches[zone] = (Hints.zoneCatches[zone] or 0) + 1
     end
+    local caught, worth = false, 0
     for slot = 1, GetNumLootItems() or 0 do
         local link = GetLootSlotLink(slot)
         local itemID = type(link) == "string" and not IsSecret(link) and tonumber(link:match(C.ITEM_ID_PATTERN))
@@ -2872,9 +3219,16 @@ function Value.RecordLoot()
             Value.HintBest(itemID)
             if not fromContainer then
                 local okCount, _, _, quantity = pcall(GetLootSlotInfo, slot)
-                Hud.ShowCatch(itemID, okCount and tonumber(quantity) or 1)
+                local count = okCount and tonumber(quantity) or 1
+                local okBest, best = pcall(Value.GetBest, itemID)
+                caught = true
+                worth = worth + (okBest and best and best.value or 0) * count
+                Hud.ShowCatch(itemID, count)
             end
         end
+    end
+    if caught then
+        Stats.AddCatch(worth)
     end
 end
 
@@ -4042,6 +4396,8 @@ local function ApplyOptions()
     end
     optionsApplyPending = false
     Hud.ApplyVisibility()
+    Hud.ApplyScale()
+    Hud.Layout()
     if minimapButton then
         minimapButton:SetShown(GetOption("showMinimapButton"))
     end
@@ -4058,10 +4414,17 @@ local function SetOption(key, value)
     if key == "combatAutoEquip" and value then
         db.directEquipBlocked = nil
     end
-    -- Tweaks and sound mode change which game settings a session touches: restore
-    -- yours now; the next cast applies the new choice.
+    -- Tweaks and focus mode change which game settings a session touches: restore
+    -- yours now and, in the middle of fishing, apply the new choice right away.
     if SESSION_OPTIONS[key] then
+        local wasFishing = db.cvarBackup ~= nil or IsFishingChannelActive()
         EndFishingSession()
+        if wasFishing then
+            StartFishingSession()
+            if not IsFishingChannelActive() then
+                ScheduleSessionEnd()
+            end
+        end
     end
     if InCombatLockdown() then
         optionsApplyPending = true
@@ -4070,6 +4433,13 @@ local function SetOption(key, value)
         ApplyOptions()
     end
     RefreshOptions()
+    Hud.RefreshToggles()
+    RefreshPanel()
+end
+
+-- A quick switch in the HUD flips its option, just like its switch in the options.
+function Hud.ToggleOption(key)
+    SetOption(key, not GetOption(key))
 end
 
 local function GetLanguageChoiceName(shortCode)
@@ -4238,7 +4608,7 @@ end
 
 function OPTION_BUILDERS.switch(content, entry, y)
     local layout = C.OPTIONS_LAYOUT
-    local x = layout.LEFT + (entry.requires and layout.INDENT or 0)
+    local x = layout.LEFT + ((entry.requires and not entry.flat) and layout.INDENT or 0)
     local textX = x + layout.SWITCH_WIDTH + layout.SWITCH_GAP
     local textWidth = layout.LEFT + layout.WIDTH - textX
     local switch = Options.CreateSwitch(content)
@@ -4276,6 +4646,53 @@ function OPTION_BUILDERS.switch(content, entry, y)
         end,
     })
     return math.min(y - layout.SWITCH_HEIGHT, below) - layout.ROW_GAP
+end
+
+-- Pick one of a few values (a percentage each), as a row of chips; the chosen one is gold.
+function OPTION_BUILDERS.choice(content, entry, y)
+    local layout = C.OPTIONS_LAYOUT
+    local x = layout.LEFT + (entry.requires and layout.INDENT or 0)
+    local width = layout.LEFT + layout.WIDTH - x
+    local label, belowLabel = Options.AddText(content, C.FONTS.OPTIONS_LABEL, L[entry.label], x, y, width)
+    local hint, belowHint = Options.AddText(content, C.FONTS.OPTIONS_HINT, L[entry.tip], x, belowLabel - layout.LABEL_HINT_GAP, width)
+    local chipY = belowHint - layout.CHIPS_TOP_GAP
+    local chips, previous = {}, nil
+    for _, value in ipairs(entry.choices) do
+        local chip = Options.CreateChip(content)
+        chip.value = value
+        Keys.SizeChip(chip, C.PERCENT_FORMAT:format(math.floor(value * C.PERCENT + 0.5)))
+        if previous then
+            chip:SetPoint("LEFT", previous, "RIGHT", layout.CHIP_GAP, 0)
+        else
+            chip:SetPoint("TOPLEFT", content, "TOPLEFT", x, chipY)
+        end
+        chip:SetScript("OnClick", function()
+            SetOption(entry.option, value)
+        end)
+        table.insert(chips, chip)
+        previous = chip
+    end
+
+    table.insert(optionControls, {
+        Refresh = function()
+            local current = GetOption(entry.option)
+            local enabled = not entry.requires or GetOption(entry.requires)
+            local alpha = enabled and 1 or layout.DISABLED_ALPHA
+            for _, chip in ipairs(chips) do
+                local chosen = current and math.abs(chip.value - current) < C.SCALE_TOLERANCE
+                local color = chosen and C.COLORS.TAB_ACTIVE or C.COLORS.CHIP_IDLE
+                chip.caption:SetTextColor(unpack(color))
+                if chip.SetBackdropBorderColor then
+                    chip:SetBackdropBorderColor(unpack(chosen and C.COLORS.TAB_ACTIVE or C.COLORS.HUD_DIVIDER))
+                end
+                chip:SetEnabled(enabled and true or false)
+                chip:SetAlpha(alpha)
+            end
+            label:SetAlpha(alpha)
+            hint:SetAlpha(alpha)
+        end,
+    })
+    return chipY - layout.CHIP_HEIGHT - layout.ROW_GAP
 end
 
 function OPTION_BUILDERS.buttons(content, entry, y)
@@ -4452,7 +4869,8 @@ function Keys.RemoveKey(row, key)
     RefreshOptions()
 end
 
-function Keys.CreateChip(content, keyRow)
+-- A small framed button with a caption, sized to its text by Keys.SizeChip.
+function Options.CreateChip(content)
     local layout = C.OPTIONS_LAYOUT
     local chip = CreateFrame("Button", nil, content, BackdropTemplateMixin and C.BACKDROP_TEMPLATE or nil)
     chip:SetHeight(layout.CHIP_HEIGHT)
@@ -4464,6 +4882,11 @@ function Keys.CreateChip(content, keyRow)
     chip.caption:SetPoint("CENTER")
     chip:SetFontString(chip.caption)
     chip:SetHighlightTexture(C.WINDOW.ROW_HIGHLIGHT, C.BLEND_ADD)
+    return chip
+end
+
+function Keys.CreateChip(content, keyRow)
+    local chip = Options.CreateChip(content)
     chip:RegisterForClicks(unpack(C.KEY_ROW_CLICKS))
     chip:SetScript("OnClick", function(self, mouseButton)
         if Keys.capture.button == keyRow.add then
@@ -4759,6 +5182,11 @@ for key, english in pairs(C.SUBCOMMANDS) do
         end
     end
 end
+for key, names in pairs(C.SUBCOMMAND_FORMER_NAMES) do
+    for _, name in ipairs(names) do
+        SUBCOMMAND_ALIASES[name] = SUBCOMMAND_ALIASES[name] or key
+    end
+end
 
 local function PrintHelp()
     PrintMessage(L.HELP_HEADER)
@@ -4818,10 +5246,41 @@ function SUBCOMMAND_HANDLERS.TWEAKS()
     PrintMessage(enabled and L.TWEAKS_ON or L.TWEAKS_OFF)
 end
 
-function SUBCOMMAND_HANDLERS.SOUND()
+function SUBCOMMAND_HANDLERS.FOCUS()
     local enabled = not GetOption("soundMode")
     SetOption("soundMode", enabled)
-    PrintMessage(enabled and L.SOUND_ON or L.SOUND_OFF)
+    PrintMessage(enabled and L.FOCUS_ON or L.FOCUS_OFF)
+end
+
+function SUBCOMMAND_HANDLERS.LOCK()
+    local locked = not GetOption("lockPanel")
+    SetOption("lockPanel", locked)
+    PrintMessage(locked and L.LOCK_ON or L.LOCK_OFF)
+end
+
+-- "/fishful session": this session's stats; with the reset word (any language), starts over.
+function SUBCOMMAND_HANDLERS.SESSION(argument)
+    argument = (argument or ""):lower()
+    if argument ~= "" then
+        -- English is the base table; the other languages only hold their overrides.
+        local languages = { ns.LOCALE_BASE }
+        for _, texts in pairs(ns.LOCALES) do
+            table.insert(languages, texts)
+        end
+        for _, texts in ipairs(languages) do
+            if texts.CMD_SESSION_RESET and texts.CMD_SESSION_RESET:lower() == argument then
+                Stats.Reset()
+                PrintMessage(L.SESSION_RESET_DONE)
+                return
+            end
+        end
+    end
+    local session = Stats.Get()
+    if not session or session.catches == 0 then
+        PrintMessage(L.SESSION_EMPTY)
+    else
+        PrintMessage(Stats.Summary(session))
+    end
 end
 
 function SUBCOMMAND_HANDLERS.RESET()
@@ -5013,6 +5472,7 @@ end
 function handlers.UNIT_SPELLCAST_CHANNEL_START(_, _, spellID)
     if IsFishingSpell(spellID) then
         fishingActive = true
+        Stats.Touch()
         StartFishingSession()
         SetReelKeys(true)
         RefreshPanel()
