@@ -152,6 +152,10 @@ C.OPTIONS_SECTIONS = {
         { kind = "note", text = "OPT_KEY_HINT" },
     } },
     { key = "FISHING", title = "OPTIONS_SECTION_FISHING", description = "OPTIONS_DESC_FISHING", items = {
+        -- Where your pole and lure order lives (the window's Fishing gear tab).
+        { kind = "buttons", buttons = {
+            { action = "OPEN_GEAR", label = "OPT_OPEN_GEAR", tip = "OPT_OPEN_GEAR_TIP" },
+        } },
         { kind = "switch", option = "useLures", label = "OPT_USE_LURES", tip = "OPT_USE_LURES_TIP" },
         { kind = "switch", option = "fishingGear", label = "OPT_FISHING_GEAR", tip = "OPT_FISHING_GEAR_TIP" },
         { kind = "switch", option = "reelWithFishKey", label = "OPT_REEL_KEY", tip = "OPT_REEL_KEY_TIP" },
@@ -533,6 +537,31 @@ C.WINDOW = {
     COLUMN_EACH = 86,
     COLUMN_TOTAL = 96,
     COLUMN_GAP = 8,
+    -- Fishing gear rows, in the last column: earlier, later, and "use it".
+    ORDER = {
+        ARROW_WIDTH = 18,
+        ARROW_HEIGHT = 16,
+        CHECK_SIZE = 22,
+        GAP = 2,
+        UP = {
+            NORMAL = "Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Up",
+            PUSHED = "Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Down",
+            DISABLED = "Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Disabled",
+            HIGHLIGHT = "Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Highlight",
+        },
+        DOWN = {
+            NORMAL = "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up",
+            PUSHED = "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Down",
+            DISABLED = "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Disabled",
+            HIGHLIGHT = "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Highlight",
+        },
+        CHECK = {
+            NORMAL = "Interface\\Buttons\\UI-CheckBox-Up",
+            PUSHED = "Interface\\Buttons\\UI-CheckBox-Down",
+            HIGHLIGHT = "Interface\\Buttons\\UI-CheckBox-Highlight",
+            CHECKED = "Interface\\Buttons\\UI-CheckBox-Check",
+        },
+    },
     TAG_PADDING = 5,
     TAG_INSET_Y = 1,
     TAG_TOP = 4,
@@ -570,9 +599,14 @@ C.FILTER_ALL = "ALL"
 C.RECIPE_FILTER = { KNOWN = "KNOWN", LEARN = "LEARN" }
 C.RECIPE_FILTER_ORDER = { "KNOWN", "LEARN" }
 C.GEAR_FILTER_ORDER = { "POLES", "LURES", "PIECES" }
+-- Gear groups. You order poles and lures (Fish takes the first you have); any piece, pole
+-- or lure can be left out.
+C.GEAR_GROUP = { POLES = "POLES", LURES = "LURES", PIECES = "PIECES" }
+C.GEAR_ORDERED = { POLES = true, LURES = true }
 C.VALUE_KIND_ORDER = { "COOK", "CRAFT", "AUCTION", "VENDOR", "OPEN", "LOCKED" }
--- Gear rows: worn, goes on with the pole, or kept in the bags (something better is worn).
-C.GEAR_STATE = { WORN = "WORN", GOES_ON = "GOES_ON", SPARE = "SPARE", BEST = "BEST" }
+-- Gear rows: worn, goes on with the pole, kept in the bags (something better is worn), or
+-- left out by you.
+C.GEAR_STATE = { WORN = "WORN", GOES_ON = "GOES_ON", SPARE = "SPARE", BEST = "BEST", OFF = "OFF" }
 -- The game's own names for equipment slots (already in every language).
 C.SLOT_NAME_GLOBALS = {
     [1] = "HEADSLOT", [2] = "NECKSLOT", [3] = "SHOULDERSLOT", [4] = "SHIRTSLOT", [5] = "CHESTSLOT",
@@ -796,7 +830,7 @@ C.COLORS = {
         VENDOR = { 0.75, 0.75, 0.75 }, OPEN = { 0.56, 0.82, 0.42 }, LOCKED = { 1, 0.45, 0.35 },
         KNOWN = { 0.56, 0.82, 0.42 }, LEARN = { 0.6, 0.8, 1 },
         WORN = { 0.56, 0.82, 0.42 }, GOES_ON = { 1, 0.82, 0 }, SPARE = { 0.75, 0.75, 0.75 },
-        BEST = { 1, 0.82, 0 },
+        BEST = { 1, 0.82, 0 }, OFF = { 0.5, 0.5, 0.5 },
     },
     TAG_BACK_ALPHA = 0.2,
     SWITCH_ON_TRACK = { 0.32, 0.24, 0.05, 0.95 },

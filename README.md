@@ -21,7 +21,7 @@ It also tells you what your catch is worth, and what to do with it.
 - **Catch value** (needs [Auctionator](https://www.curseforge.com/wow/addons/auctionator)). For everything you fish, it finds the best use: sell it to a vendor, sell it at the auction house, cook it, or make something with any of your professions. It also tells you about recipes worth learning. You see this in item tooltips, in the chat when you catch something, and in the window.
 - **One window, three tabs:**
   - **Catch value:** totals plus a list you can filter.
-  - **Fishing gear:** poles, lures and pieces with a Fishing bonus.
+  - **Fishing gear:** poles, lures and pieces with a Fishing bonus, in the order Fish uses them. Change it with the arrows, or untick one to leave it out. Also from Options → Fishing ("Lure and pole order") or a click on the HUD's lure timer.
   - **Recipes:** every recipe that uses what you fish, known or still to learn.
 - **Fishing comfort:**
   - Marks the bobber.

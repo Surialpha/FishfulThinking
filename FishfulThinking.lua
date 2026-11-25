@@ -132,21 +132,29 @@ local function IsPoleEquipped()
     return IsFishingPole(GetEquippedItemID(C.MAIN_HAND_SLOT))
 end
 
--- Prefers the last pole you used; otherwise the first one in your bags.
-local function FindFishingPoleInBags()
-    local firstPole
+-- The poles in your bags: the last one you used first, then in bag order.
+function Gear.PolesInBags()
+    local poles, seen = {}, {}
     for bag = C.FIRST_BAG, C.LAST_ITEM_BAG do
         for slot = 1, GetContainerNumSlots(bag) or 0 do
             local itemID = GetContainerItemID(bag, slot)
-            if IsFishingPole(itemID) then
-                if itemID == db.lastPoleID then
-                    return itemID
-                end
-                firstPole = firstPole or itemID
+            if itemID and not seen[itemID] and IsFishingPole(itemID) then
+                seen[itemID] = true
+                table.insert(poles, itemID == db.lastPoleID and 1 or #poles + 1, itemID)
             end
         end
     end
-    return firstPole
+    return poles
+end
+
+-- The first pole of your order in your bags; without an order, the last pole you used,
+-- else the first one. Poles you left out are never picked.
+local function FindFishingPoleInBags()
+    for _, itemID in ipairs(Gear.Ordered(C.GEAR_GROUP.POLES, Gear.PolesInBags())) do
+        if not Gear.IsSkipped(itemID) then
+            return itemID
+        end
+    end
 end
 
 local function GetFreeBagSlots()
@@ -317,10 +325,10 @@ local function GetLureState()
     return false
 end
 
+-- The first lure of your order (by default, the biggest bonus) that you carry and can use.
 local function FindBestLure()
-    for _, lure in ipairs(C.LURES) do
-        local itemID = lure.itemID
-        if (lureFailures[itemID] or 0) < C.LURE_MAX_FAILURES
+    for _, itemID in ipairs(Gear.Ordered(C.GEAR_GROUP.LURES, Gear.LureIDs())) do
+        if not Gear.IsSkipped(itemID) and (lureFailures[itemID] or 0) < C.LURE_MAX_FAILURES
             and (GetItemCount(itemID) or 0) > 0 and IsUsableItem(itemID) then
             return itemID
         end
@@ -671,6 +679,106 @@ end
 -- the same press. What you usually wear in those slots is remembered and comes back with
 -- the weapon.
 
+-- Priorities: your order for poles and lures, and what Fish leaves out. Kept for the
+-- whole account, by item. Items you haven't ordered keep the default order, after yours.
+
+function Gear.IsSkipped(itemID)
+    return (itemID and accountDB and accountDB.gearSkip and accountDB.gearSkip[itemID]) and true or false
+end
+
+function Gear.LureIDs()
+    local ids = {}
+    for _, lure in ipairs(C.LURES) do
+        table.insert(ids, lure.itemID)
+    end
+    return ids
+end
+
+-- These items (in their default order), sorted by your order.
+function Gear.Ordered(group, itemIDs)
+    local order = accountDB and accountDB.gearOrder and accountDB.gearOrder[group]
+    if not order or #order == 0 then
+        return itemIDs
+    end
+    local rank, position, sorted = {}, {}, {}
+    for index, itemID in ipairs(order) do
+        rank[itemID] = rank[itemID] or index
+    end
+    for index, itemID in ipairs(itemIDs) do
+        position[itemID] = index
+        sorted[index] = itemID
+    end
+    table.sort(sorted, function(a, b)
+        local rankA, rankB = rank[a], rank[b]
+        if rankA and rankB then
+            return rankA < rankB
+        end
+        if rankA or rankB then
+            return rankA ~= nil
+        end
+        return position[a] < position[b]
+    end)
+    return sorted
+end
+
+-- Moves an item one place earlier (-1) or later (1) among the ones shown, in that order.
+function Gear.Move(group, itemID, step, shown)
+    local index
+    for position, shownID in ipairs(shown or {}) do
+        if shownID == itemID then
+            index = position
+        end
+    end
+    local neighbour = index and shown[index + step]
+    if not (neighbour and accountDB) then
+        return
+    end
+    accountDB.gearOrder = accountDB.gearOrder or {}
+    local order = accountDB.gearOrder[group] or {}
+    -- Everything shown takes its place in your order, so the move sticks.
+    local listed = {}
+    for _, orderedID in ipairs(order) do
+        listed[orderedID] = true
+    end
+    for _, shownID in ipairs(shown) do
+        if not listed[shownID] then
+            listed[shownID] = true
+            table.insert(order, shownID)
+        end
+    end
+    for position = #order, 1, -1 do
+        if order[position] == itemID then
+            table.remove(order, position)
+        end
+    end
+    for position, orderedID in ipairs(order) do
+        if orderedID == neighbour then
+            table.insert(order, step < 0 and position or position + 1, itemID)
+            break
+        end
+    end
+    accountDB.gearOrder[group] = order
+    Gear.PrioritiesChanged()
+end
+
+function Gear.SetSkipped(itemID, skipped)
+    if not (itemID and accountDB) then
+        return
+    end
+    accountDB.gearSkip = accountDB.gearSkip or {}
+    accountDB.gearSkip[itemID] = skipped and true or nil
+    Gear.PrioritiesChanged()
+end
+
+-- Back to the default order, with everything in use.
+function Gear.ResetPriorities()
+    if accountDB then
+        accountDB.gearOrder = nil
+        accountDB.gearSkip = nil
+    end
+    Gear.PrioritiesChanged()
+end
+
 function Gear.FindInBags(itemID)
     for bag = C.FIRST_BAG, C.LAST_ITEM_BAG do
         for bagSlot = 1, GetContainerNumSlots(bag) or 0 do
@@ -739,7 +847,7 @@ function Gear.GetPlan()
     for bag = C.FIRST_BAG, C.LAST_ITEM_BAG do
         for bagSlot = 1, GetContainerNumSlots(bag) or 0 do
             local itemID = GetContainerItemID(bag, bagSlot)
-            local slot = itemID and not IsSecret(itemID) and Gear.GetSlot(itemID)
+            local slot = itemID and not IsSecret(itemID) and not Gear.IsSkipped(itemID) and Gear.GetSlot(itemID)
             if slot then
                 local bonus = Gear.GetBonus(itemID)
                 if bonus > 0 and (not best[slot] or bonus > best[slot].bonus) then
@@ -1892,6 +2000,15 @@ function Hud.CreateLureBar(parent)
     local style = C.HUD
     local holder = CreateFrame("Frame", nil, parent, BackdropTemplateMixin and C.BACKDROP_TEMPLATE or nil)
     holder:SetHeight(style.BAR_HEIGHT)
+    -- A click opens the Fishing gear tab, where you choose which lure goes first.
+    holder:EnableMouse(true)
+    holder:SetScript("OnMouseUp", function()
+        Window.Open(C.WINDOW_TAB.GEAR)
+    end)
+    holder:SetScript("OnEnter", function(self)
+        ShowTooltip(self, L.GEAR_TILE_LURE, { L.HUD_LURE_BAR_TIP })
+    end)
+    holder:SetScript("OnLeave", HideTooltip)
     if holder.SetBackdrop then
         holder:SetBackdrop(style.BAR_BORDER)
         holder:SetBackdropBorderColor(unpack(C.COLORS.HUD_BORDER))
@@ -3500,6 +3617,29 @@ function Window.CreateRow(list, index)
     row.section = row:CreateFontString(nil, "OVERLAY", C.FONTS.ROW_SECTION)
     row.section:SetPoint("LEFT", row, "LEFT", 0, 0)
 
+    -- Fishing gear: "use it", and for poles and lures, earlier and later.
+    local order = style.ORDER
+    local useBox = CreateFrame("CheckButton", nil, row)
+    useBox:SetSize(order.CHECK_SIZE, order.CHECK_SIZE)
+    useBox:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+    useBox:SetNormalTexture(order.CHECK.NORMAL)
+    useBox:SetPushedTexture(order.CHECK.PUSHED)
+    useBox:SetHighlightTexture(order.CHECK.HIGHLIGHT, C.BLEND_ADD)
+    useBox:SetCheckedTexture(order.CHECK.CHECKED)
+    useBox:SetScript("OnClick", function(self)
+        Gear.SetSkipped(row.itemID, not self:GetChecked())
+    end)
+    useBox:SetScript("OnEnter", function(self)
+        ShowTooltip(self, L.GEAR_USE, { L.GEAR_USE_TIP })
+    end)
+    useBox:SetScript("OnLeave", HideTooltip)
+    useBox:Hide()
+    row.useBox = useBox
+    row.down = Window.CreateArrow(row, order.DOWN, L.GEAR_MOVE_DOWN, L.GEAR_MOVE_DOWN_TIP, 1)
+    row.down:SetPoint("RIGHT", useBox, "LEFT", -order.GAP, 0)
+    row.up = Window.CreateArrow(row, order.UP, L.GEAR_MOVE_UP, L.GEAR_MOVE_UP_TIP, -1)
+    row.up:SetPoint("RIGHT", row.down, "LEFT", -order.GAP, 0)
+
     row:SetScript("OnEnter", function(self)
         if self.itemID then
             GameTooltip:SetOwner(self, C.TOOLTIP_ANCHOR)
@@ -3518,13 +3658,51 @@ function Window.CreateRow(list, index)
     return row
 end
 
+-- One arrow of a gear row: moves its item one place (step -1 earlier, 1 later).
+function Window.CreateArrow(row, textures, title, tip, step)
+    local order = C.WINDOW.ORDER
+    local arrow = CreateFrame("Button", nil, row)
+    arrow:SetSize(order.ARROW_WIDTH, order.ARROW_HEIGHT)
+    arrow:SetNormalTexture(textures.NORMAL)
+    arrow:SetPushedTexture(textures.PUSHED)
+    arrow:SetDisabledTexture(textures.DISABLED)
+    arrow:SetHighlightTexture(textures.HIGHLIGHT, C.BLEND_ADD)
+    arrow:SetScript("OnClick", function()
+        Gear.Move(row.gearGroup, row.itemID, step, row.orderIDs)
+    end)
+    arrow:SetScript("OnEnter", function(self)
+        ShowTooltip(self, title, { tip })
+    end)
+    arrow:SetScript("OnLeave", HideTooltip)
+    arrow:Hide()
+    return arrow
+end
+
+-- Shows a gear row's controls: "use it" for any gear, the arrows for poles and lures.
+function Window.FillControls(row, entry)
+    local group = entry.group
+    row.gearGroup, row.orderIDs = group, entry.orderIDs
+    row.useBox:SetShown(group ~= nil)
+    if group then
+        row.useBox:SetChecked(not entry.skipped)
+    end
+    local movable = group ~= nil and C.GEAR_ORDERED[group] == true
+    row.up:SetShown(movable)
+    row.down:SetShown(movable)
+    if movable then
+        row.up:SetEnabled(not entry.first)
+        row.down:SetEnabled(not entry.last)
+    end
+end
+
 -- entry: { itemID, icon, title, sub, tag, tagColor, note, noteColor, detail, detailColor,
--- each, total, learnText } or { section = "Lures" }.
+-- each, total, learnText, group, orderIDs, skipped, first, last } or { section = "Lures" }.
 function Window.FillRow(row, entry)
     local style = C.WINDOW
     local isSection = entry.section ~= nil
     row.itemID = not isSection and entry.itemID or nil
     row.learnText = entry.learnText
+    Window.FillControls(row, isSection and {} or entry)
     row.section:SetText(entry.section or "")
     for _, part in ipairs({ row.icon, row.title, row.sub, row.note, row.detail, row.each, row.total }) do
         part:SetShown(not isSection)
@@ -3635,7 +3813,7 @@ function Window.RenderList(list)
         if entry then
             Window.FillRow(row, entry)
         else
-            row.itemID, row.learnText = nil, nil
+            row.itemID, row.learnText, row.gearGroup, row.orderIDs = nil, nil, nil, nil
             row:Hide()
         end
     end
@@ -3908,7 +4086,12 @@ end
 
 -- Fishing gear --------------------------------------------------------------------------------
 
-function Window.GearEntry(itemID, state, bonus, sub)
+function Window.GearEntry(itemID, state, bonus, sub, group)
+    -- Left out: says so, unless you're wearing it (the box still shows your choice).
+    local skipped = Gear.IsSkipped(itemID)
+    if skipped and state ~= C.GEAR_STATE.WORN then
+        state = C.GEAR_STATE.OFF
+    end
     return {
         itemID = itemID,
         icon = GetItemIcon(itemID),
@@ -3917,7 +4100,20 @@ function Window.GearEntry(itemID, state, bonus, sub)
         tag = L["TAG_" .. state],
         tagColor = C.COLORS.TAG[state],
         each = bonus and bonus > 0 and C.WINDOW.BONUS_FORMAT:format(bonus) or "",
+        group = group,
+        skipped = skipped,
     }
+end
+
+-- Marks a group's entries with their place in its order (for the arrows).
+function Window.MarkOrder(entries)
+    local orderIDs = {}
+    for _, entry in ipairs(entries) do
+        table.insert(orderIDs, entry.itemID)
+    end
+    for index, entry in ipairs(entries) do
+        entry.orderIDs, entry.first, entry.last = orderIDs, index == 1, index == #entries
+    end
 end
 
 function Window.SlotName(slot)
@@ -3925,16 +4121,33 @@ function Window.SlotName(slot)
     return type(name) == "string" and name or ""
 end
 
--- Poles, lures and pieces with a Fishing bonus, worn or in your bags.
+-- Poles, lures and pieces with a Fishing bonus, worn or in your bags. Poles and lures go
+-- in your order: the first one you can use is the one Fish takes.
 function Window.CollectGear()
     local groups = { POLES = {}, LURES = {}, PIECES = {} }
     local seen = {}
     local worn = GetEquippedItemID(C.MAIN_HAND_SLOT)
-    local usedPole = IsFishingPole(worn) and worn or FindFishingPoleInBags()
-    if IsFishingPole(worn) then
-        seen[worn] = true
-        table.insert(groups.POLES, Window.GearEntry(worn, C.GEAR_STATE.WORN, Gear.GetBonus(worn), Window.SlotName(C.MAIN_HAND_SLOT)))
+    local wornPole = IsFishingPole(worn) and worn or nil
+    local usedPole = wornPole or FindFishingPoleInBags()
+    local mainHandName = Window.SlotName(C.MAIN_HAND_SLOT)
+
+    local poles = Gear.PolesInBags()
+    if wornPole then
+        for index = #poles, 1, -1 do
+            if poles[index] == wornPole then
+                table.remove(poles, index)
+            end
+        end
+        table.insert(poles, 1, wornPole)
     end
+    for _, itemID in ipairs(Gear.Ordered(C.GEAR_GROUP.POLES, poles)) do
+        seen[itemID] = true
+        local state = itemID == wornPole and C.GEAR_STATE.WORN
+            or (itemID == usedPole and C.GEAR_STATE.BEST or C.GEAR_STATE.SPARE)
+        table.insert(groups.POLES, Window.GearEntry(itemID, state, Gear.GetBonus(itemID), mainHandName, C.GEAR_GROUP.POLES))
+    end
+    Window.MarkOrder(groups.POLES)
+
     local planned = {}
     for _, pick in ipairs(Gear.GetPlan()) do
         planned[pick.itemID] = true
@@ -3944,37 +4157,37 @@ function Window.CollectGear()
         local bonus = itemID and Gear.GetBonus(itemID) or 0
         if bonus > 0 and not seen[itemID] then
             seen[itemID] = true
-            table.insert(groups.PIECES, Window.GearEntry(itemID, C.GEAR_STATE.WORN, bonus, Window.SlotName(slot)))
+            table.insert(groups.PIECES, Window.GearEntry(itemID, C.GEAR_STATE.WORN, bonus, Window.SlotName(slot), C.GEAR_GROUP.PIECES))
         end
     end
     for bag = C.FIRST_BAG, C.LAST_ITEM_BAG do
         for bagSlot = 1, GetContainerNumSlots(bag) or 0 do
             local itemID = GetContainerItemID(bag, bagSlot)
-            if itemID and not IsSecret(itemID) and not seen[itemID] then
-                if IsFishingPole(itemID) then
+            if itemID and not IsSecret(itemID) and not seen[itemID] and not IsFishingPole(itemID) then
+                local slot = Gear.GetSlot(itemID)
+                local bonus = slot and Gear.GetBonus(itemID) or 0
+                if bonus > 0 then
                     seen[itemID] = true
-                    local state = itemID == usedPole and C.GEAR_STATE.BEST or C.GEAR_STATE.SPARE
-                    table.insert(groups.POLES, Window.GearEntry(itemID, state, Gear.GetBonus(itemID), Window.SlotName(C.MAIN_HAND_SLOT)))
-                else
-                    local slot = Gear.GetSlot(itemID)
-                    local bonus = slot and Gear.GetBonus(itemID) or 0
-                    if bonus > 0 then
-                        seen[itemID] = true
-                        local state = planned[itemID] and C.GEAR_STATE.GOES_ON or C.GEAR_STATE.SPARE
-                        table.insert(groups.PIECES, Window.GearEntry(itemID, state, bonus, Window.SlotName(slot)))
-                    end
+                    local state = planned[itemID] and C.GEAR_STATE.GOES_ON or C.GEAR_STATE.SPARE
+                    table.insert(groups.PIECES, Window.GearEntry(itemID, state, bonus, Window.SlotName(slot), C.GEAR_GROUP.PIECES))
                 end
             end
         end
     end
+
     local bestLure = FindBestLure()
+    local bonuses = {}
     for _, lure in ipairs(C.LURES) do
-        local count = GetItemCount(lure.itemID) or 0
+        bonuses[lure.itemID] = lure.bonus
+    end
+    for _, itemID in ipairs(Gear.Ordered(C.GEAR_GROUP.LURES, Gear.LureIDs())) do
+        local count = GetItemCount(itemID) or 0
         if count > 0 then
-            local state = lure.itemID == bestLure and C.GEAR_STATE.BEST or C.GEAR_STATE.SPARE
-            table.insert(groups.LURES, Window.GearEntry(lure.itemID, state, lure.bonus, C.WINDOW.COUNT_FORMAT:format(count)))
+            local state = itemID == bestLure and C.GEAR_STATE.BEST or C.GEAR_STATE.SPARE
+            table.insert(groups.LURES, Window.GearEntry(itemID, state, bonuses[itemID], C.WINDOW.COUNT_FORMAT:format(count), C.GEAR_GROUP.LURES))
         end
     end
+    Window.MarkOrder(groups.LURES)
     return groups, usedPole, bestLure
 end
 
@@ -4123,8 +4336,9 @@ Window.PAGE_SPECS = {
     },
     GEAR = {
         tiles = { "GEAR_TILE_SKILL", "GEAR_TILE_POLE", "GEAR_TILE_LURE" },
-        columns = { "COL_PIECE", "COL_STATUS", "COL_BONUS", false },
+        columns = { "COL_PIECE", "COL_STATUS", "COL_BONUS", "COL_PRIORITY" },
         refresh = Window.RefreshGear,
+        button = { label = "GEAR_RESET", tip = "GEAR_RESET_TIP", onClick = function() Gear.ResetPriorities() end },
     },
     RECIPES = {
         tiles = { "RECIPES_TILE_KNOWN", "RECIPES_TILE_LEARN", "RECIPES_TILE_BEST" },
@@ -4290,6 +4504,17 @@ function Window.Toggle(key)
     end)
 end
 
+-- Opens it on that tab (already open there, it stays open).
+function Window.Open(key)
+    Value.Safely(function()
+        if not Window.frame then
+            Window.Create()
+        end
+        Window.Select(key)
+        Window.frame:Show()
+    end)
+end
+
 function Value.Toggle()
     Window.Toggle(C.WINDOW_TAB.VALUE)
 end
@@ -4442,6 +4667,13 @@ function Hud.ToggleOption(key)
     SetOption(key, not GetOption(key))
 end
 
+-- Your gear order changed: the window, the HUD and the Fish macro follow it.
+function Gear.PrioritiesChanged()
+    ApplyOptions()
+    RefreshPanel()
+    Window.Refresh()
+end
+
 local function GetLanguageChoiceName(shortCode)
     if shortCode == C.LANGUAGE_AUTO then
         return L.LANGUAGE_AUTO_NAME
@@ -4477,6 +4709,10 @@ end
 
 function OPTION_ACTIONS.OPEN_WINDOW()
     Value.Toggle()
+end
+
+function OPTION_ACTIONS.OPEN_GEAR()
+    Window.Open(C.WINDOW_TAB.GEAR)
 end
 
 function OPTION_ACTIONS.TEST_ALERT()

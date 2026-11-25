@@ -11,6 +11,11 @@
   - Lock the HUD in place (also `/fishful lock`) and pick its size, from 80% to 130%. It stays where you put it.
   - Choose which parts it shows: what to press next, the lure timer, Fishing skill, this water, session stats, the coin and each quick switch. It gets smaller to fit, in height and width.
   - Showing the HUD, only with the pole, and centring it moved here from General.
+- **Your gear order**, in the Fishing gear tab:
+  - Arrows choose which pole and lure Fish takes first (by default, lures by bonus and the last pole you used).
+  - Untick any pole, lure or fishing piece and Fish leaves it out.
+  - "Default order" goes back to the usual. Your order is kept for your whole account.
+  - Find it in Options → Fishing ("Lure and pole order"), with `/fishful gear`, or by clicking the HUD's lure timer.
 - **Sound mode is now Focus mode** (`/fishful focus`; `/fishful sound` still works). Your setting carries over.
 - Focus mode and the fishing tweaks now apply right away if you change them while fishing, instead of on the next cast.
 - **Attacked with the bobber out:** the Weapon key, the weapon card and Fish (in combat) now stop the fishing first, so one press puts your weapon on. Addons can't cancel a cast by themselves, so this needs that one press when the weapon doesn't go on by itself.
